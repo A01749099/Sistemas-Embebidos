@@ -19,14 +19,8 @@ import cv2
 from kivy.clock import Clock
 from subprocess import Popen
 import sys
-import cv2
-from kivy.graphics.texture import Texture
-from kivy.clock import Clock
+from subprocess import Popen
 from kivy.uix.image import Image as KivyImage
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from PIL import Image as PILImage
 
 
 # Configuración de Google Sheets
@@ -93,7 +87,7 @@ class LoginScreen(Screen):
             text='',
             color=(1, 0, 0, 1),
             size_hint=(1, 0.2),
-            font_size=16,
+            font_size=14,
             halign='center',
             valign='middle'
         )
@@ -280,7 +274,7 @@ class InicioScreen(Screen):
         layout = FloatLayout()
 
         # Imagen de fondo
-        fondo = Image(source='fondo.png', allow_stretch=True, keep_ratio=False)
+        fondo = Image(source='fondo_rasp.png', allow_stretch=True, keep_ratio=False)
         layout.add_widget(fondo)
 
         # Botón para ir a la pantalla de "Nuevo Usuario"
@@ -410,7 +404,7 @@ class ControlDeteccionScreen(Screen):
         
         # Inicia el nuevo script
         try:
-            self.segundo_codigo = Popen([sys.executable, "deteccion.py"])  # Cambia "osc2.py" según sea necesario
+            self.segundo_codigo = Popen([sys.executable, "ImagenyMensaje.py"])  # Cambia "osc2.py" según sea necesario
             print("Nuevo script de detección iniciado.")
         except Exception as e:
             print(f"Error al iniciar el script: {e}")
@@ -447,19 +441,9 @@ class MonitoreoScreen(Screen):
         super().__init__(**kwargs)
         self.layout = BoxLayout(orientation="vertical")
 
-        # Imagen de fondo
-        self.background_image = Image(
-            source="monitoreo.png",  # Cambia "fondo.png" por el nombre de tu archivo de imagen
-            allow_stretch=True,
-            keep_ratio=False,
-            size_hint=(1, 1),
-            pos_hint={'center_x': 0.5, 'center_y': 0.5}
-        )
-        self.add_widget(self.background_image)  # Agregar la imagen de fondo como primer widget
-        
         # Etiqueta
         label = Label(
-            text=" ",
+            text="Monitoreo en Tiempo Real",
             font_size=24,
             size_hint=(1, 0.1),
             pos_hint={'center_x': 0.5, 'center_y': 0.9}
@@ -479,7 +463,6 @@ class MonitoreoScreen(Screen):
             text="Regresar",
             font_size=20,
             size_hint=(0.2, 0.1),
-            background_color=(0.4, 0.6, 1, 0),
             pos_hint={'center_x': 0.5, 'center_y': 0.1}
         )
         btn_back.bind(on_press=self.go_back)
@@ -487,8 +470,12 @@ class MonitoreoScreen(Screen):
 
         self.add_widget(self.layout)
         
-        cam1 = cv2.VideoCapture(0)
-        cam2 = cv2.VideoCapture(1)
+        cam1 = cv2.VideoCapture("rtsp://localhost:8554/camera1")
+        cam2 = cv2.VideoCapture("rtsp://localhost:8554/camera2")
+        cam1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cam1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cam2.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cam2.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         # Inicialización de cámaras
         self.capture_cam1 = cam1
         self.capture_cam2 = cam2
@@ -499,8 +486,12 @@ class MonitoreoScreen(Screen):
 
     def on_enter(self):
         """Se ejecuta al entrar a la pantalla. Inicia el monitoreo."""
-        cam1 = cv2.VideoCapture(0)
-        cam2 = cv2.VideoCapture(1)
+        cam1 = cv2.VideoCapture("rtsp://localhost:8554/camera1")
+        cam2 = cv2.VideoCapture("rtsp://localhost:8554/camera2")
+        cam1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cam1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cam2.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cam2.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         # Inicialización de cámaras
         self.capture_cam1 = cam1
         self.capture_cam2 = cam2
@@ -508,8 +499,9 @@ class MonitoreoScreen(Screen):
         active_cameras.append(cam2)
         self.update_event = Clock.schedule_interval(self.update_frames, 1/30)  # Actualiza a 30 FPS
 
-    #def on_leave(self):
-     #   """Se ejecuta al salir de la pantalla. Libera recursos."""
+    def on_leave(self):
+        """Se ejecuta al salir de la pantalla. Libera recursos."""
+        release_all_cameras()
       #  if self.update_event:
        #     self.update_event.cancel()
         #self.capture_cam1.release()
@@ -537,6 +529,8 @@ class MonitoreoScreen(Screen):
     def go_back(self, instance):
         """Regresa a la pantalla anterior."""
         self.manager.current = "control_deteccion"
+
+
 
 class NuevoUsuarioScreen(Screen):
     def __init__(self, **kwargs):
@@ -633,7 +627,9 @@ class NuevoUsuarioScreen(Screen):
         container.add_widget(self.camera_layout)
         self.add_widget(container)
 
-        cam1 = cv2.VideoCapture(0)
+        cam1 = cv2.VideoCapture("rtsp://localhost:8554/camera1")
+        cam1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cam1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         # Inicialización de cámaras
         self.capture = cam1
         active_cameras.append(cam1)  # Inicia la cámara de OpenCV
@@ -692,13 +688,19 @@ class NuevoUsuarioScreen(Screen):
         self.manager.current = "inicio"
     def on_enter(self):
         """Se ejecuta al entrar a la pantalla. Inicia el monitoreo."""
-        cam1 = cv2.VideoCapture(0)
+        cam1 = cv2.VideoCapture("rtsp://localhost:8554/camera1")
+        cam1.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cam1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         # Inicialización de cámaras
         self.capture = cam1
         active_cameras.append(cam1)
         self.camera_view = KivyImage()  # Widget para mostrar la transmisión
         
         self.update_event = Clock.schedule_interval(self.update_camera, 1/30)  # Actualiza a 30 FPS
+
+    def on_leave(self):
+        """Se ejecuta al salir de la pantalla. Libera recursos."""
+        release_all_cameras()
 
 
     def go_back(self, instance):
